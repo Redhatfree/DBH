@@ -1,0 +1,51 @@
+import os
+os.chdir(r"C:\Users\Rouzbeh\Downloads\Files")
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import analysis as A
+
+ds = A.load_dbh_excel("data.xlsx")
+d = A.prepare(ds)
+base, last = ds.full_years[0], ds.full_years[-1]
+m = A.add_metrics(d, ds, base, last)
+A.print_report(ds)                      # tekstrapport i konsollen
+
+# 1) Total per år
+tot = d[ds.years].sum()
+labels = [f"{y}*" if y == ds.partial_year else str(y) for y in ds.years]
+colors = ["#aab7c4" if y == ds.partial_year else "#1f4e79" for y in ds.years]
+plt.figure(figsize=(8, 4))
+plt.bar(labels, tot.values, color=colors)
+plt.title("Total produksjon per år (* = ufullstendig)")
+plt.ylabel("Enheter (60 studiepoeng)")
+plt.tight_layout(); plt.show()
+
+# 2) Fordeling per kategori
+ct = A.category_table(d, ds.years)
+ct.T.plot(kind="bar", stacked=True, figsize=(10, 5), colormap="tab20")
+plt.title("Produksjon per kategori"); plt.ylabel("Enheter")
+plt.legend(bbox_to_anchor=(1.01, 1), loc="upper left")
+plt.tight_layout(); plt.show()
+
+# 3) Største programmer
+top = m.nlargest(12, last).iloc[::-1]
+plt.figure(figsize=(9, 5))
+plt.barh(top["program"].str[:55], top[last], color="#2e86c1")
+plt.title(f"Største programmer {last}"); plt.xlabel("Enheter")
+plt.tight_layout(); plt.show()
+
+# 4) Størst vekst og nedgang
+ch = pd.concat([m.nsmallest(8, "Endring"), m.nlargest(8, "Endring")]).sort_values("Endring")
+plt.figure(figsize=(10, 6))
+plt.barh(ch["program"].str[:55], ch["Endring"],
+         color=["#e74c3c" if v < 0 else "#27ae60" for v in ch["Endring"]])
+plt.title(f"Størst vekst og nedgang {base} → {last}"); plt.xlabel("Endring i enheter")
+plt.tight_layout(); plt.show()
+
+# 5) Aktive programmer
+lc = A.lifecycle(d, ds.years)
+plt.figure(figsize=(8, 4))
+plt.plot(lc["År"].astype(str), lc["Aktive programmer"], marker="o")
+plt.title("Antall aktive programmer"); plt.ylim(bottom=0)
+plt.tight_layout(); plt.show()
